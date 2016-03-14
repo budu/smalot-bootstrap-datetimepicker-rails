@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
  * bootstrap-datetimepicker.js
  * =========================================================
  * Copyright 2012 Stefan Petre
@@ -8,7 +8,7 @@
  * Improvements by Yun Lai
  * Improvements by Kenneth Henderick
  * Improvements by CuGBabyBeaR
- * Improvements by Christian Vaas
+ * Improvements by Christian Vaas <auspex@auspex.eu>
  *
  * Project URL : http://www.malot.fr/bootstrap-datetimepicker
  *
@@ -24,7 +24,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  * ========================================================= */
-!function ($) {
+
+(function(factory){
+    if (typeof define === 'function' && define.amd)
+      define(['jquery'], factory);
+    else if (typeof exports === 'object')
+      factory(require('jquery'));
+    else
+      factory(jQuery);
+
+}(function($, undefined){
 
   // Add ECMA262-5 Array methods if not supported natively (IE8)
   if (!('indexOf' in Array.prototype)) {
@@ -86,7 +95,7 @@
 
     this.bootcssVer = options.bootcssVer || (this.isInput ? (this.element.is('.form-control') ? 3 : 2) : ( this.bootcssVer = this.element.is('.input-group') ? 3 : 2 ));
 
-    this.component = this.element.is('.date') ? ( this.bootcssVer == 3 ? this.element.find('.input-group-addon .glyphicon-th, .input-group-addon .glyphicon-time, .input-group-addon .glyphicon-calendar, .input-group-addon .glyphicon-calendar, .input-group-addon .fa-calendar, .input-group-addon .fa-clock-o').parent() : this.element.find('.add-on .icon-th, .add-on .icon-time, .add-on .icon-calendar .fa-calendar .fa-clock-o').parent()) : false;
+    this.component = this.element.is('.date') ? ( this.bootcssVer == 3 ? this.element.find('.input-group-addon .glyphicon-th, .input-group-addon .glyphicon-time, .input-group-addon .glyphicon-remove, .input-group-addon .glyphicon-calendar, .input-group-addon .fa-calendar, .input-group-addon .fa-clock-o').parent() : this.element.find('.add-on .icon-th, .add-on .icon-time, .add-on .icon-calendar, .add-on .fa-calendar, .add-on .fa-clock-o').parent()) : false;
     this.componentReset = this.element.is('.date') ? ( this.bootcssVer == 3 ? this.element.find('.input-group-addon .glyphicon-remove, .input-group-addon .fa-times').parent():this.element.find('.add-on .icon-remove, .add-on .fa-times').parent()) : false;
     this.hasInput = this.component && this.element.find('input').length;
     if (this.component && this.component.length === 0) {
@@ -99,6 +108,7 @@
     this.showMeridian = options.showMeridian || this.element.data('show-meridian') || false;
     this.initialDate = options.initialDate || new Date();
     this.zIndex = options.zIndex || this.element.data('z-index') || undefined;
+    this.title = typeof options.title === 'undefined' ? false : options.title;
 
     this.icons = {
       leftArrow: this.fontAwesome ? 'fa-arrow-left' : (this.bootcssVer === 3 ? 'glyphicon-arrow-left' : 'icon-arrow-left'),
@@ -107,6 +117,13 @@
     this.icontype = this.fontAwesome ? 'fa' : 'glyphicon';
 
     this._attachEvents();
+
+    this.clickedOutside = function (e) {
+        // Clicked outside the datetimepicker, hide it
+        if ($(e.target).closest('.datetimepicker').length === 0) {
+            that.hide();
+        }
+    }
 
     this.formatViewType = 'datetime';
     if ('formatViewType' in options) {
@@ -211,12 +228,8 @@
       var selector = this.bootcssVer === 3 ? '.prev span, .next span' : '.prev i, .next i';
       this.picker.find(selector).toggleClass(this.icons.leftArrow + ' ' + this.icons.rightArrow);
     }
-    $(document).on('mousedown', function (e) {
-      // Clicked outside the datetimepicker, hide it
-      if ($(e.target).closest('.datetimepicker').length === 0) {
-        that.hide();
-      }
-    });
+
+    $(document).on('mousedown', this.clickedOutside);
 
     this.autoclose = false;
     if ('autoclose' in options) {
@@ -233,15 +246,18 @@
     }
 
     this.todayBtn = (options.todayBtn || this.element.data('date-today-btn') || false);
+    this.clearBtn = (options.clearBtn || this.element.data('date-clear-btn') || false);
     this.todayHighlight = (options.todayHighlight || this.element.data('date-today-highlight') || false);
 
     this.weekStart = ((options.weekStart || this.element.data('date-weekstart') || dates[this.language].weekStart || 0) % 7);
     this.weekEnd = ((this.weekStart + 6) % 7);
     this.startDate = -Infinity;
     this.endDate = Infinity;
+    this.datesDisabled = [];
     this.daysOfWeekDisabled = [];
     this.setStartDate(options.startDate || this.element.data('date-startdate'));
     this.setEndDate(options.endDate || this.element.data('date-enddate'));
+    this.setDatesDisabled(options.datesDisabled || this.element.data('date-dates-disabled'));
     this.setDaysOfWeekDisabled(options.daysOfWeekDisabled || this.element.data('date-days-of-week-disabled'));
     this.setMinutesDisabled(options.minutesDisabled || this.element.data('date-minute-disabled'));
     this.setHoursDisabled(options.hoursDisabled || this.element.data('date-hour-disabled'));
@@ -362,6 +378,7 @@
 
     remove: function () {
       this._detachEvents();
+      $(document).off('mousedown', this.clickedOutside);
       this.picker.remove();
       delete this.picker;
       delete this.element.data().datetimepicker;
@@ -374,6 +391,14 @@
 
     getUTCDate: function () {
       return this.date;
+    },
+
+    getInitialDate: function () {
+      return this.initialDate
+    },
+
+    setInitialDate: function (initialDate) {
+      this.initialDate = initialDate;
     },
 
     setDate: function (d) {
@@ -447,6 +472,24 @@
       this.updateNavArrows();
     },
 
+    setDatesDisabled: function (datesDisabled) {
+      this.datesDisabled = datesDisabled || [];
+      if (!$.isArray(this.datesDisabled)) {
+        this.datesDisabled = this.datesDisabled.split(/,\s*/);
+      }
+      this.datesDisabled = $.map(this.datesDisabled, function (d) {
+        return DPGlobal.parseDate(d, this.format, this.language, this.formatType).toDateString();
+      });
+      this.update();
+      this.updateNavArrows();
+    },
+
+    setTitle: function (selector, value) {
+      return this.picker.find(selector)
+        .find('th:eq(1)')
+        .text(this.title === false ? value : this.title);
+    },
+
     setDaysOfWeekDisabled: function (daysOfWeekDisabled) {
       this.daysOfWeekDisabled = daysOfWeekDisabled || [];
       if (!$.isArray(this.daysOfWeekDisabled)) {
@@ -513,24 +556,26 @@
       } else {
         offset = this.element.offset();
         left = offset.left;
+        if (this.pickerPosition == 'bottom-left' || this.pickerPosition == 'top-left') {
+          left += this.element.outerWidth() - this.picker.outerWidth();
+        }
       }
 
-      if(left+220 > document.body.clientWidth){
-                  left = document.body.clientWidth-220;
-              }
+      var bodyWidth = document.body.clientWidth || window.innerWidth;
+      if (left + 220 > bodyWidth) {
+        left = bodyWidth - 220;
+      }
 
-      if (this.pickerPosition == 'top-left' || this.pickerPosition == 'top-right') {
-        top = offset.top - this.picker.outerHeight();
+      if (this.component) {
+        top = top - containerOffset.top + 169;
+        left = left - containerOffset.left + 210;
       } else {
-        top = offset.top + this.height;
+        if (this.pickerPosition == 'top-left' || this.pickerPosition == 'top-right') {
+          top = offset.top - this.picker.outerHeight();
+        } else {
+          top = offset.top + this.height;
+        }
       }
-
-      top = top - containerOffset.top;
-      left = left - containerOffset.left;
-
-            if( !elementOrParentIsFixed(this.element) ){
-          top = top + document.body.scrollTop;
-            }
 
       this.picker.css({
         top:    top,
@@ -605,21 +650,21 @@
         endMonth = this.endDate !== Infinity ? this.endDate.getUTCMonth() + 1 : Infinity,
         currentDate = (new UTCDate(this.date.getUTCFullYear(), this.date.getUTCMonth(), this.date.getUTCDate())).valueOf(),
         today = new Date();
-      this.picker.find('.datetimepicker-days thead th:eq(1)')
-        .text(dates[this.language].months[month] + ' ' + year);
+      this.setTitle('.datetimepicker-days', dates[this.language].months[month] + ' ' + year)
       if (this.formatViewType == 'time') {
         var formatted = this.getFormattedDate();
-        this.picker.find('.datetimepicker-hours thead th:eq(1)').text(formatted);
-        this.picker.find('.datetimepicker-minutes thead th:eq(1)').text(formatted);
+        this.setTitle('.datetimepicker-hours', formatted);
+        this.setTitle('.datetimepicker-minutes', formatted);
       } else {
-        this.picker.find('.datetimepicker-hours thead th:eq(1)')
-          .text(dayMonth + ' ' + dates[this.language].months[month] + ' ' + year);
-        this.picker.find('.datetimepicker-minutes thead th:eq(1)')
-          .text(dayMonth + ' ' + dates[this.language].months[month] + ' ' + year);
+        this.setTitle('.datetimepicker-hours', dayMonth + ' ' + dates[this.language].months[month] + ' ' + year);
+        this.setTitle('.datetimepicker-minutes', dayMonth + ' ' + dates[this.language].months[month] + ' ' + year);
       }
       this.picker.find('tfoot th.today')
-        .text(dates[this.language].today)
+        .text(dates[this.language].today || dates['en'].today)
         .toggle(this.todayBtn !== false);
+      this.picker.find('tfoot th.clear')
+        .text(dates[this.language].clear || dates['en'].clear)
+        .toggle(this.clearBtn !== false);
       this.updateNavArrows();
       this.fillMonths();
       /*var prevMonth = UTCDate(year, month, 0,0,0,0,0);
@@ -654,7 +699,8 @@
           clsName += ' active';
         }
         if ((prevMonth.valueOf() + 86400000) <= this.startDate || prevMonth.valueOf() > this.endDate ||
-          $.inArray(prevMonth.getUTCDay(), this.daysOfWeekDisabled) !== -1) {
+          $.inArray(prevMonth.getUTCDay(), this.daysOfWeekDisabled) !== -1 ||
+					$.inArray(prevMonth.toDateString(), this.datesDisabled) !== -1) {
           clsName += ' disabled';
         }
         html.push('<td class="day' + clsName + '">' + prevMonth.getUTCDate() + '</td>');
@@ -735,15 +781,13 @@
       this.picker.find('.datetimepicker-minutes td').html(html.join(''));
 
       var currentYear = this.date.getUTCFullYear();
-      var months = this.picker.find('.datetimepicker-months')
-        .find('th:eq(1)')
-        .text(year)
+      var months = this.setTitle('.datetimepicker-months', year)
         .end()
         .find('span').removeClass('active');
       if (currentYear == year) {
         // getUTCMonths() returns 0 based, and we need to select the next one
-                // To cater bootstrap 2 we don't need to select the next one
-                var offset = months.length - 12;
+        // To cater bootstrap 2 we don't need to select the next one
+        var offset = months.length - 12;
         months.eq(this.date.getUTCMonth() + offset).addClass('active');
       }
       if (year < startYear || year > endYear) {
@@ -758,9 +802,7 @@
 
       html = '';
       year = parseInt(year / 10, 10) * 10;
-      var yearCont = this.picker.find('.datetimepicker-years')
-        .find('th:eq(1)')
-        .text(year + '-' + (year + 9))
+      var yearCont = this.setTitle('.datetimepicker-years', year + '-' + (year + 9))
         .end()
         .find('td');
       year -= 1;
@@ -923,6 +965,12 @@
                   endDate:   this.endDate
                 });
                 break;
+              case 'clear':
+                this.reset();
+                if (this.autoclose) {
+                  this.hide();
+                }
+                break;
               case 'today':
                 var date = new Date();
                 date = UTCDate(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), 0);
@@ -1081,7 +1129,7 @@
       }
       this.element.trigger({
         type: 'changeDate',
-        date: this.date
+        date: this.getDate()
       });
       if(date == null)
         this.date = this.viewDate;
@@ -1286,7 +1334,7 @@
         }
         this.element.trigger({
           type: 'changeDate',
-          date: this.date
+          date: this.getDate()
         });
       }
     },
@@ -1376,7 +1424,8 @@
       monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
       meridiem:    ['am', 'pm'],
       suffix:      ['st', 'nd', 'rd', 'th'],
-      today:       'Today'
+      today:       'Today',
+      clear:       'Clear'
     }
   };
 
@@ -1431,7 +1480,7 @@
     },
     validParts: function (type) {
       if (type == 'standard') {
-        return /hh?|HH?|p|P|ii?|ss?|dd?|DD?|mm?|MM?|yy(?:yy)?/g;
+        return /t|hh?|HH?|p|P|ii?|ss?|dd?|DD?|mm?|MM?|yy(?:yy)?/g;
       } else if (type == 'php') {
         return /[dDjlNwzFmMnStyYaABgGhHis]/g;
       } else {
@@ -1449,7 +1498,7 @@
       }
       return {separators: separators, parts: parts};
     },
-    parseDate:        function (date, format, language, type) {
+    parseDate: function (date, format, language, type) {
       if (date instanceof Date) {
         var dateUTC = new Date(date.valueOf() - date.getTimezoneOffset() * 60000);
         dateUTC.setMilliseconds(0);
@@ -1593,6 +1642,7 @@
       var val;
       if (type == 'standard') {
         val = {
+          t:    date.getTime(),
           // year
           yy:   date.getUTCFullYear().toString().substring(2),
           yyyy: date.getUTCFullYear(),
@@ -1717,7 +1767,10 @@
                 '</tr>' +
       '</thead>',
     contTemplate: '<tbody><tr><td colspan="7"></td></tr></tbody>',
-    footTemplate: '<tfoot><tr><th colspan="7" class="today"></th></tr></tfoot>'
+    footTemplate: '<tfoot>' + 
+                    '<tr><th colspan="7" class="today"></th></tr>' +
+                    '<tr><th colspan="7" class="clear"></th></tr>' +
+                  '</tfoot>'
   };
   DPGlobal.template = '<div class="datetimepicker">' +
     '<div class="datetimepicker-minutes">' +
@@ -1821,4 +1874,4 @@
     $('[data-provide="datetimepicker-inline"]').datetimepicker();
   });
 
-}(window.jQuery);
+}));
