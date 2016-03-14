@@ -2,7 +2,8 @@
 require "bundler/gem_tasks"
 
 task :submodule do
-  sh 'git submodule update --init' unless File.exist?('bootstrap-datetimepicker/README.md')
+  sh 'git clone https://github.com/smalot/bootstrap-datetimepicker.git bootstrap-datetimepicker' unless File.exist?('bootstrap-datetimepicker/README.md')
+  sh "cd bootstrap-datetimepicker && git pull origin master"
 end
 
 desc "Remove the vendor directory"
